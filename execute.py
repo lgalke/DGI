@@ -10,14 +10,24 @@ dataset = 'cora'
 
 # training params
 batch_size = 1
-nb_epochs = 10000
+nb_epochs = 1000000
 patience = 20
 lr = 0.001
 l2_coef = 0.0
 drop_prob = 0.0
 hid_units = 512
 sparse = True
-nonlinearity = 'prelu' # special name to separate parameters
+
+import sys
+
+if len(sys.argv) > 1:
+    nonlinearity =  getattr(nn, sys.argv[1])()
+else:
+    nonlinearity = 'prelu'
+
+print("Nonlinearity", nonlinearity)
+
+# nonlinearity = 'prelu' # special name to separate parameters
 
 adj, features, labels, idx_train, idx_val, idx_test = process.load_data(dataset)
 features, _ = process.preprocess_features(features)
@@ -82,8 +92,6 @@ for epoch in range(nb_epochs):
 
     loss = b_xent(logits, lbl)
 
-    print('Loss:', loss)
-
     if loss < best:
         best = loss
         best_t = epoch
@@ -98,6 +106,12 @@ for epoch in range(nb_epochs):
 
     loss.backward()
     optimiser.step()
+    if hasattr(model.gcn.act, 'weight'):
+        print("Epoch {}, Loss: {:.4f}, PReLU weight: {:.4f}".format(epoch+1,
+                                                                    loss.item(),
+                                                                    model.gcn.act.weight.item()))
+    else:
+        print("Epoch {}, Loss: {:.4f}".format(epoch+1, loss.item()))
 
 print('Loading {}th epoch'.format(best_t))
 model.load_state_dict(torch.load('best_dgi.pkl'))
